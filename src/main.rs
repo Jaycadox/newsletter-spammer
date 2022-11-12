@@ -3,16 +3,60 @@ use eframe::epaint::ahash::HashSet;
 use eframe::{egui, CreationContext};
 use egui::mutex::Mutex;
 use egui::FontFamily::Proportional;
-use egui::{Align, Color32, FontId, Layout, TextStyle};
+use egui::{Align, Color32, Direction, FontId, Layout, TextStyle};
 use headless_chrome::{Browser, LaunchOptionsBuilder};
 use reqwest::StatusCode;
 use sha256::digest;
 use std::error::Error;
+use std::process::Command;
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+fn update() {
+    if std::path::Path::new("__newsletter_spammer_old_delete__.exe").exists() {
+        loop {
+            std::thread::sleep(Duration::from_millis(800));
+            match std::fs::remove_file("__newsletter_spammer_old_delete__.exe") {
+                Ok(_) => break,
+                _ => {
+                    continue;
+                }
+            };
+        }
+    }
+    let exe = std::env::current_exe().unwrap();
+    let exe = exe.to_str().unwrap();
+    let exe_len = std::fs::read(exe).unwrap().len();
+
+    let download_url =
+        reqwest::blocking::get("https://jaycadox.github.io/newsletter-spammer-site/DOWNLOAD_URL")
+            .unwrap()
+            .text()
+            .unwrap();
+    let new_exe_len = reqwest::blocking::get(&download_url)
+        .unwrap()
+        .content_length()
+        .unwrap();
+    if exe_len != new_exe_len as usize {
+        std::fs::rename(exe, "__newsletter_spammer_old_delete__.exe").unwrap();
+        let new_exe = reqwest::blocking::get(&download_url)
+            .unwrap()
+            .bytes()
+            .unwrap();
+        std::fs::write(exe, new_exe).unwrap();
+        let _ = Command::new(exe).spawn();
+        std::process::exit(0);
+    }
+}
+
 fn main() {
+    if cfg!(not(debug_assertions)) {
+        std::thread::spawn(|| {
+            update();
+        });
+    }
+
     let mut options = eframe::NativeOptions::default();
     options.max_window_size = Some(egui::vec2(500., 1080.));
     options.min_window_size = Some(egui::vec2(500., 200.));
