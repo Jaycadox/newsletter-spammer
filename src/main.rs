@@ -74,7 +74,7 @@ fn main() {
         Box::new(|cc| Box::new(MyApp::new(cc, newsletters))),
     );
 }
-
+#[derive(Clone, PartialEq)]
 enum DataState {
     Waiting,
     Loading,
@@ -103,6 +103,8 @@ pub struct MyApp {
     grabs: Vec<String>,
     spam_nature_target: String,
     spam_nature_count: Arc<AtomicI32>,
+    auto: bool,
+    clear_last_tick: bool,
 }
 
 impl MyApp {
@@ -132,6 +134,8 @@ impl MyApp {
             grabs: Vec::default(),
             spam_nature_target: String::default(),
             spam_nature_count: Arc::new(AtomicI32::new(-1)),
+            auto: false,
+            clear_last_tick: false,
         }
     }
 }
@@ -320,6 +324,23 @@ impl eframe::App for MyApp {
         sanitize_input(&mut self.target);
         sanitize_input(&mut self.spam_nature_target);
 
+        let mut clear_this_tick = true;
+
+        for item in self.newsletters.iter() {
+            let state = item.lock().state.clone();
+            if state == DataState::Loading {
+                clear_this_tick = false;
+                break;
+            }
+        }
+
+        if self.auto && !self.grabs.is_empty() && clear_this_tick && !self.clear_last_tick {
+            self.target = self.grabs[0].clone();
+            self.grabs.retain(|f| f != &self.target);
+            MyApp::start(self.newsletters.clone(), self.target.clone());
+        }
+
+        self.clear_last_tick = clear_this_tick;
         ctx.request_repaint_after(Duration::from_millis(50));
         let mut is_email_valid = false;
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -385,14 +406,23 @@ impl eframe::App for MyApp {
                         .map(|f| f.as_str().to_owned())
                         .collect::<HashSet<String>>();
                     self.grabs = emails.iter().map(|f| f.to_owned()).collect();
+                    self.auto = false;
                 }
             });
             let selected: bool = false;
             ui.push_id("auto-email-getter", |ui| {
+                if self.grabs.len() > 1 {
+                    ui.horizontal(|ui| {
+                        ui.checkbox(&mut self.auto, "auto (click any to start)");
+                        ui.with_layout(Layout::right_to_left(Align::TOP), |ui| {
+                            ui.label(format!("{} emails", self.grabs.len()));
+                        });
+                    });
+                }
                 egui::ScrollArea::vertical()
                     .max_height(120.)
                     .show(ui, |ui| {
-                        for grab in self.grabs.iter() {
+                        for grab in self.grabs.clone().iter() {
                             if ui
                                 .add_sized(
                                     [ui.available_width(), 5.],
@@ -405,6 +435,7 @@ impl eframe::App for MyApp {
                                 && grab != "failed"
                             {
                                 self.target = grab.clone();
+                                self.grabs.retain(|f| f != &self.target);
                                 MyApp::start(self.newsletters.clone(), self.target.clone());
                             }
                         }
