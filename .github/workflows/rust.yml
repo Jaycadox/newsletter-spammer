@@ -33,7 +33,7 @@ jobs:
           toolchain: stable
           target: x86_64-pc-windows-gnu
     - name: Build
-      run: cargo build --verbose --release --target x86_64-pc-windows-msvc
+      run: cargo build --verbose --release --target x86_64-pc-windows-gnu
     - name: Run UPX
       uses: crazy-max/ghaction-upx@v2
       with:
