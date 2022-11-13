@@ -14,7 +14,7 @@ env:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
     - uses: actions/checkout@v3
@@ -31,9 +31,8 @@ jobs:
       uses: actions-rs/toolchain@v1
       with:
           toolchain: stable
-          target: x86_64-pc-windows-gnu
     - name: Build
-      run: cargo build --verbose --release --target x86_64-pc-windows-gnu
+      run: cargo build --verbose --release
     - name: Run UPX
       uses: crazy-max/ghaction-upx@v2
       with:
