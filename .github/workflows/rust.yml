@@ -27,7 +27,7 @@ jobs:
           ~/.cargo/git/db/
           target/
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Install latest nightly
+    - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
       with:
           toolchain: stable
