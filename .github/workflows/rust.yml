@@ -38,9 +38,9 @@ jobs:
       with:
         version: latest
         files: |
-          ./bin/*.exe
+          ./target/release/newsletter-spammer.exe
         args: -fq
     - uses: actions/upload-artifact@v3
       with:
         name: my-artifact
-        path: /target/release/newsletter-spammer.exe
+        path: ./target/release/newsletter-spammer.exe
