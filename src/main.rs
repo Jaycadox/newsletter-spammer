@@ -3,7 +3,7 @@ use eframe::epaint::ahash::HashSet;
 use eframe::{egui, CreationContext};
 use egui::mutex::Mutex;
 use egui::FontFamily::Proportional;
-use egui::{Align, Color32, Direction, FontId, Layout, TextStyle};
+use egui::{Align, Color32, FontId, Layout, TextStyle};
 use headless_chrome::{Browser, LaunchOptionsBuilder};
 use reqwest::StatusCode;
 use sha256::digest;
@@ -67,6 +67,8 @@ fn main() {
         "NBC (Breaking News)",
         "National Geographic",
         "Scientific American",
+        "The Poop Scoop",
+        "Vantech",
     ];
     eframe::run_native(
         "newsletter spammer (educational purposes only)",
@@ -225,6 +227,30 @@ fn do_request(name: &str, email: &str) -> Result<DataState, Box<dyn Error>> {
                 .body(format!("email={}&lists%5BMaster%5D=1&vars%5Bsub_breaking%5D=1&vars%5Bsource%5D=signup-page&nonce_636f78a1da612=636f78a1da613&profile_id=589b4d1d3c8aa9253d8b4580&st_form_num=0", email))
                 .send()?;
             Ok(DataState::Success)
+        }
+        "The Poop Scoop" => {
+            let client = reqwest::blocking::Client::new();
+            let res = client
+                .post("https://www.wormfarmingrevealed.com/cgi-bin/mailout/mailmgr.cgi")
+                .body(format!("list_id=21104425&action=subscribe&email={}&name=&gdpr_age_consent=on&gdpr_privacy_policy_consent=on&gdpr_information_purpose=on", email))
+                .send()?;
+            if res.status() == StatusCode::OK {
+                Ok(DataState::Success)
+            } else {
+                Ok(DataState::Error)
+            }
+        }
+        "Vantech" => {
+            let client = reqwest::blocking::Client::new();
+            let res = client
+                .post("https://www.vantechjournal.com/api/v1/free")
+                .body(format!("{{\"first_url\":\"https://www.vantechjournal.com/\",\"first_referrer\":\"https://www.google.com/\",\"current_url\":\"https://www.vantechjournal.com/\",\"current_referrer\":\"https://www.google.com/\",\"referral_code\":\"\",\"source\":\"subscribe-widget-preamble\",\"referring_pub_id\":\"\",\"additional_referring_pub_ids\":\"\",\"email\":\"{}\"}}", email))
+                .send()?;
+            if res.status() == StatusCode::OK {
+                Ok(DataState::Success)
+            } else {
+                Ok(DataState::Error)
+            }
         }
         "National Geographic" => {
             let browser = Browser::default()?;
