@@ -1,0 +1,49 @@
+name: Build
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+  workflow_dispatch:
+    
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+          toolchain: stable
+    - name: Build
+      run: cargo build --verbose --release
+    - name: Run UPX
+      uses: crazy-max/ghaction-upx@v2
+      with:
+        version: latest
+        files: |
+          ./target/release/newsletter-spammer.exe
+        args: -fq
+    - uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "latest"
+        prerelease: true
+        title: "Development Build"
+        files: "./target/release/newsletter-spammer.exe"
