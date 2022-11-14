@@ -40,7 +40,9 @@ jobs:
         files: |
           ./target/release/newsletter-spammer.exe
         args: -fq
-    - name: Release
-      uses: softprops/action-gh-release@v1
+    - name: Create a Release
+      uses: elgohr/Github-Release-Action@v4
+      env:
+        GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
       with:
-        files: ./target/release/newsletter-spammer.exe
+        title: Automatic release via Action
