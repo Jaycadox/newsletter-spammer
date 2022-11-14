@@ -46,5 +46,4 @@ jobs:
         automatic_release_tag: "latest"
         prerelease: true
         title: "Development Build"
-        files: |
-          *.exe
+        files: "./target/release/newsletter-spammer.exe"
